@@ -750,8 +750,18 @@ public class FurnitureTable extends JTable implements View, Printable {
           return headerRendererLabel;
         }
       };
+    List<TableColumn> printedColumns = new ArrayList<TableColumn>();
     for (int columnIndex = 0, n = columnModel.getColumnCount(); columnIndex < n; columnIndex++) {
-      final TableColumn tableColumn = columnModel.getColumn(columnIndex);
+      printedColumns.add(columnModel.getColumn(columnIndex));
+    }
+    if (columnModel instanceof FurnitureTableColumnModel) {
+      // Add the Level column to the printed table only, so rows of different levels can be told apart
+      TableColumn levelColumn = ((FurnitureTableColumnModel)columnModel).getMissingLevelColumn();
+      if (levelColumn != null) {
+        printedColumns.add(levelColumn);
+      }
+    }
+    for (final TableColumn tableColumn : printedColumns) {
       // Create a printable column from existing table column
       TableColumn printableColumn = new TableColumn();
       printableColumn.setIdentifier(tableColumn.getIdentifier());
@@ -1009,12 +1019,30 @@ public class FurnitureTable extends JTable implements View, Printable {
    */
   private static class FurnitureTableColumnModel extends DefaultTableColumnModel {
     private Map<HomePieceOfFurniture.SortableProperty, TableColumn> availableColumns;
+    private final Home home;
 
     public FurnitureTableColumnModel(Home home, UserPreferences preferences) {
+      this.home = home;
       createAvailableColumns(home, preferences);
       addHomeListener(home);
       addLanguageListener(preferences);
       updateModelColumns(home.getFurnitureVisibleProperties());
+    }
+
+    /**
+     * Returns the Level column if the home has levels and this column isn't displayed,
+     * or <code>null</code> otherwise. The returned column isn't added to this model.
+     */
+    public TableColumn getMissingLevelColumn() {
+      if (this.home.getLevels().isEmpty()) {
+        return null;
+      }
+      for (int columnIndex = 0, n = getColumnCount(); columnIndex < n; columnIndex++) {
+        if (getColumn(columnIndex).getIdentifier() == HomePieceOfFurniture.SortableProperty.LEVEL) {
+          return null;
+        }
+      }
+      return this.availableColumns.get(HomePieceOfFurniture.SortableProperty.LEVEL);
     }
 
     /**
